@@ -1,0 +1,88 @@
+pip install psycopg2-binary
+pip install plotly
+from sqlalchemy import create_engine
+import pandas as pd
+
+DATABASE_URL = "postgresql://postgres:password@postgres:5432/dbdm"
+engine = create_engine(DATABASE_URL)
+query = """
+WITH Returns AS (
+    SELECT 
+        i.product_id,
+        COUNT(*) AS return_count,
+        ih.reason
+    FROM Inventory_History AS ih
+    JOIN Inventory AS i ON ih.inventory_id = i.inventory_id
+    JOIN Product AS p ON i.product_id = p.product_id
+	WHERE ih.reason IN ('Customer Changed Mind', 'Defective or Damaged Product', 'Wrong Item Shipped', 'Product Not as Described')
+    GROUP BY i.product_id, ih.reason
+),
+TotalSales AS (
+    SELECT 
+        od.product_id,
+        SUM(od.quantity) AS total_sold
+    FROM Order_Detail od
+    JOIN "order" o ON od.order_id = o.order_id
+    WHERE o.order_status = 'Delivered'
+    GROUP BY od.product_id
+)
+SELECT 
+    p.product_name AS "Product Name", p.product_id AS "Product Id",
+    COALESCE(ts.total_sold, 0) AS "Total sold quantity",
+    COALESCE(r.return_count, 0) AS "No of Returns",
+    COALESCE(ROUND(
+        CASE 
+            WHEN ts.total_sold > 0 THEN (COALESCE(r.return_count, 0)::DECIMAL / ts.total_sold) * 100 
+            ELSE 0 
+        END, 2
+    ), 0.0) AS "Return percentage",
+    r.reason AS "Most return reason"
+FROM Product p
+LEFT JOIN TotalSales ts ON p.product_id = ts.product_id
+LEFT JOIN Returns r ON p.product_id = r.product_id
+WHERE r.return_count > 0 and r.return_count IS NOT NULL
+ORDER BY "Return percentage" DESC;
+""";
+
+df = pd.read_sql(query, engine)
+print(df.head())
+
+import plotly.graph_objects as go
+
+top_returned_products = df.sort_values(by='Return percentage', ascending=False).head(20)
+# Bar Plot: Return Percentage by Product
+fig1 = go.Figure()
+fig1.add_trace(go.Bar(
+    x=top_returned_products['Product Id'],
+    y=top_returned_products['Return percentage'],
+    text=top_returned_products['Product Name'],
+    textposition='auto',
+    marker_color='lightblue',
+))
+
+fig1.update_layout(
+    title='Return Percentage by Product (ID as X-axis)',
+    xaxis_title='Product ID',
+    yaxis_title='Return Percentage (%)',
+    showlegend=False,
+    xaxis_tickangle=45
+)
+
+# Pie Chart: Common Return Reasons
+return_reasons = df['Most return reason'].value_counts()
+
+fig2 = go.Figure(go.Pie(
+    labels=return_reasons.index,
+    values=return_reasons.values,
+    hoverinfo='label+percent',
+    textinfo='label+percent',
+    marker=dict(colors=['#FF6666', '#FFCC66', '#66CC66'])
+))
+
+fig2.update_layout(
+    title='Distribution of Common Return Reasons'
+)
+
+# Display both plots
+fig1.show()
+fig2.show()
