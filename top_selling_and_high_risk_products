@@ -1,0 +1,55 @@
+--top selling products--
+SELECT 
+    p.Product_ID, 
+    p.Product_name, 
+    SUM(od.Quantity) AS total_quantity_sold
+FROM 
+    Product p
+JOIN 
+    Order_Detail od ON p.Product_ID = od.Product_ID
+GROUP BY 
+    p.Product_ID, p.Product_name
+ORDER BY 
+    total_quantity_sold DESC
+LIMIT 10;  
+
+ -- high risk products--
+SELECT 
+    p.Product_ID,
+    p.Product_name,
+    COALESCE(SUM(od.Quantity), 0) AS total_quantity_sold,
+    i.Current_quantity AS inventory_quantity,
+    p.Final_price,
+    (i.Current_quantity * p.Final_price) AS inventory_value
+FROM Product p
+LEFT JOIN Order_Detail od ON p.Product_ID = od.Product_ID
+LEFT JOIN Inventory i ON p.Product_ID = i.Product_ID
+GROUP BY 
+    p.Product_ID, 
+    p.Product_name, 
+    i.Current_quantity, 
+    p.Final_price
+HAVING 
+    COALESCE(SUM(od.Quantity), 0) = 0  
+    AND i.Current_quantity > 0        
+ORDER BY 
+    inventory_value DESC
+;
+
+
+--Count & Percentage of Unsold Products--
+SELECT
+    COUNT(*) FILTER (WHERE od.total_quantity_sold IS NULL OR od.total_quantity_sold = 0) AS unsold_product_count,
+    COUNT(*) AS total_product_count,
+    ROUND(
+        100.0 * COUNT(*) FILTER (WHERE od.total_quantity_sold IS NULL OR od.total_quantity_sold = 0) / COUNT(*),
+        2
+    ) AS unsold_percentage
+FROM Product p
+LEFT JOIN (
+    SELECT 
+        Product_ID, 
+        SUM(Quantity) AS total_quantity_sold
+    FROM Order_Detail
+    GROUP BY Product_ID
+) od ON p.Product_ID = od.Product_ID;
