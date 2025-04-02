@@ -1,1 +1,25 @@
+--Update Inventory_History set reason = 'Defective or Damaged Product' where inventory_id in (select inventory_id from Inventory_History where reason = 'Returned Items' and (inventory_id::TEXT like '%6' or inventory_id::TEXT like '%1' or inventory_id::TEXT like '%4');
+--Update Inventory_History set reason = 'Customer Changed Mind' where inventory_id in (select inventory_id from Inventory_History where reason = 'Returned Items' and (inventory_id::TEXT like '%2' or inventory_id::TEXT like '%7');
+--Update Inventory_History set reason = 'Wrong Item Shipped' where inventory_id in (select inventory_id from Inventory_History where reason = 'Returned Items' and (inventory_id::TEXT like '%3' or inventory_id::TEXT like '%8' or inventory_id::TEXT like '%5');
+--Update Inventory_History set reason = 'Product Not as Described' where inventory_id in (select inventory_id from Inventory_History where reason = 'Returned Items' and (inventory_id::TEXT like '%9' or inventory_id::TEXT like '%0');
 
+--Update Order_Detail set quantity = 5 WHERE product_id in (425,268,446,595,165,248,599,744,113,807,321,389,194,945)
+--Update Order_Detail set quantity = quantity + 2 WHERE product_id in (709,968,816,151,171,36,930,74,528,85,487,855,938,465,640,89,148,590,241,817,296,689,394,878,469,46,63,981,995,883,827,124,596,168,670,453,605,449,137,470,545,520,110,2,582,880,198,245,22,130,983,306,977,772,944,257,255,578,232,493,847,127,643,347,607,749,510,33,549,310,379,945,425,382,511,982,672,298,489,598,108,320,600,561,181,103,248,346,225)
+--Update Order_Detail set quantity = quantity + 2 WHERE product_id in (709,816,151,968,469,171,938,36,528,74,465,855,85,930,487,995,63,46,137,168,124)
+--Update Order_Detail set quantity = quantity + 2 WHERE product_id in (709,469)
+--Update Order_Detail set quantity = quantity + 1 WHERE product_id in (296, 605, 386, 589, 689, 817, 116, 130, 816, 256, 425, 670, 945, 442, 883, 526, 140, 173, 880, 968, 111, 958, 542, 394, 599, 353, 997, 698, 37, 148, 198, 241, 973, 480, 520, 306, 640, 590, 410, 152, 798, 337, 943, 750, 129, 986, 254, 808, 874, 110, 718, 485, 772, 339, 633, 89, 49, 321, 423, 624, 149, 470, 971, 436)
+Update Order_Detail set quantity = quantity + 1 WHERE product_id in (248, 168, 709, 940, 968, 981, 816, 63, 198, 599)
+
+--Update Inventory_History set reason = 'New Stock' where quantity_change > 0 and inventory_id in (select inventory_id from inventory WHERE product_id in (613,222,252,178,431,481,391,106,117,216,966,142,684,84,929,308,27,822,565,177,644,632,735,882,653,862,91,916,625,419,679,681,416,967,11,455,848,707,826,639,174,845,402,67,852,100,597,136,674,300,979,832,223,75,50,584,96,658,504,609,560,623,281,422,999,213,846,836,131,992,917,309,569,30,876,766,662,208,139,956,778,358,161,628,736,77,176,767,719,715,355,145,282,107,133,287,235,284,48,5,141,415,135,685,587,850,338))
+--Update Inventory_History set reason = 'Sale' where quantity_change < 0 and inventory_id in (select inventory_id from inventory WHERE product_id in (613,222,252,178,431,481,391,106,117,216,966,142,684,84,929,308,27,822,565,177,644,632,735,882,653,862,91,916,625,419,679,681,416,967,11,455,848,707,826,639,174,845,402,67,852,100,597,136,674,300,979,832,223,75,50,584,96,658,504,609,560,623,281,422,999,213,846,836,131,992,917,309,569,30,876,766,662,208,139,956,778,358,161,628,736,77,176,767,719,715,355,145,282,107,133,287,235,284,48,5,141,415,135,685,587,850,338))
+
+SELECT 
+        i.product_id,
+        COUNT(*) AS return_count,
+        ih.reason
+    FROM Inventory_History AS ih
+    JOIN Inventory AS i ON ih.inventory_id = i.inventory_id
+    JOIN Product AS p ON i.product_id = p.product_id
+	WHERE ih.reason IN ('Customer Changed Mind', 'Defective or Damaged Product', 'Wrong Item Shipped', 'Product Not as Described')
+    GROUP BY i.product_id, ih.reason
+	order by i.product_id
